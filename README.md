@@ -88,26 +88,48 @@ A production-ready REST API for managing healthcare clinic queues, appointments,
 
 ## Data Models
 
+> **Full schema documentation with ER diagram:** [SCHEMA.md](SCHEMA.md)
+
 ```
-Branch
-  └── ServiceType (belongs to Branch)
-  └── Staff (belongs to Branch)
-  └── Slot (belongs to Branch + ServiceType)
-        └── Appointment (belongs to Slot + Customer)
-              └── AuditLog (tracks all mutations)
-Customer
-  └── Appointment (has many)
+Branch (1) ──── (N) ServiceType
+  │                    │
+  │                    │ M:N via staff_services
+  │                    │
+  ├── (N) Staff ───────┘
+  │         │
+  ├── (N) Slot (belongs to Branch + ServiceType + Staff?)
+  │         │
+  │         └── (1) Appointment
+  │                    │
+  └──────────── Customer (1) ──── (N) Appointment
+
+AuditLog ← tracks all write operations (immutable)
 ```
 
 | Model | Key Fields |
 |---|---|
-| **Branch** | name, location, phone, isActive |
-| **ServiceType** | name, description, avgDurationMinutes, branchId |
-| **Staff** | name, email, role, branchId |
-| **Slot** | date, startTime, endTime, capacity, branchId, serviceTypeId |
-| **Customer** | name, email, phone, fileUrl |
-| **Appointment** | status, queueNumber, notes, slotId, customerId |
-| **AuditLog** | action, entity, entityId, userId, metadata |
+| **Branch** | name, location, phone |
+| **ServiceType** | name, description, durationMinutes, price (OMR), branchId |
+| **Staff** | name, email, role (admin/manager/staff), branchId |
+| **Slot** | date, startTime, endTime, isBooked, deletedAt (soft delete), branchId, serviceTypeId |
+| **Customer** | name, email, phone, idImage |
+| **Appointment** | status (booked/checked-in/no-show/completed/cancelled), notes, attachment, slotId, customerId |
+| **StaffService** | staffId, serviceTypeId (M:N junction) |
+| **AuditLog** | action, actorId, actorRole, targetType, targetId, metadata (JSONB) |
+
+### Database Migrations
+
+Version-controlled migration scripts are in [`migrations/`](migrations/):
+
+```bash
+# Run all migrations
+npm run migrate
+
+# Rollback all migrations
+npm run migrate:down
+```
+
+Each migration file (001 through 008) creates one table with all columns, constraints, and foreign keys.
 
 ---
 

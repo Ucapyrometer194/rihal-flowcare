@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/app.js",
     "seed": "node src/seed/seed.js",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "migrate": "node migrations/migrate.js",
+    "migrate:down": "node migrations/migrate.js down"
   },
   "keywords": [
     "flowcare",
