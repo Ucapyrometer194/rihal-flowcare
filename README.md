@@ -2,7 +2,8 @@
 
 > **[View All Submissions — alizaabi.om/rihal-codestack](https://alizaabi.om/rihal-codestack/)**
 
-![Showcase](screenshots/showcase-main.png)
+![Showcase](screenshots/showcase-hero.png)
+![Challenges](screenshots/showcase-challenges.png)
 
 **Live API:** [alizaabi.om/rihal-codestack/flowcare-api/health](https://alizaabi.om/rihal-codestack/flowcare-api/health) | **API Explorer:** [alizaabi.om/rihal-codestack/flowcare.html](https://alizaabi.om/rihal-codestack/flowcare.html)
 
