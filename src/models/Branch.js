@@ -18,6 +18,10 @@ const Branch = sequelize.define('Branch', {
   phone: {
     type: DataTypes.STRING,
   },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'branches',
   timestamps: true,

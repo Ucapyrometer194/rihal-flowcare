@@ -28,6 +28,10 @@ const ServiceType = sequelize.define('ServiceType', {
     type: DataTypes.UUID,
     allowNull: false,
   },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'service_types',
   timestamps: true,

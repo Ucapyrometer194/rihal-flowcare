@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { Customer, Staff } = require('../models');
 const { uploadIdWithValidation } = require('../middleware/upload');
 const { authenticate } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimiter');
 
 /**
  * @swagger
@@ -43,7 +44,7 @@ const { authenticate } = require('../middleware/auth');
  *       409:
  *         description: Email already registered
  */
-router.post('/register', uploadIdWithValidation, async (req, res, next) => {
+router.post('/register', authLimiter, uploadIdWithValidation, async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
 
@@ -93,7 +94,7 @@ router.post('/register', uploadIdWithValidation, async (req, res, next) => {
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', authenticate, async (req, res) => {
+router.post('/login', authLimiter, authenticate, async (req, res) => {
   // if we get here, auth middleware already validated credentials
   res.json({
     id: req.user.id,

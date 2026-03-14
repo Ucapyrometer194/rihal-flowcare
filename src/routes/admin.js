@@ -2,10 +2,12 @@ const router = require('express').Router();
 const { authenticate } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { cleanupExpiredSlots } = require('../services/cleanupService');
+const { adminLimiter } = require('../middleware/rateLimiter');
 const config = require('../config/config');
 
 router.use(authenticate);
 router.use(requireRole('admin'));
+router.use(adminLimiter);
 
 /**
  * @swagger

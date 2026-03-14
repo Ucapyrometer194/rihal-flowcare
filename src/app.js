@@ -32,16 +32,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
-// global rate limit - 100 requests per 15 min per IP
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests, slow down' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// global rate limit - 100 requests per 15 min per IP (skip in test)
+if (process.env.NODE_ENV !== 'test') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests, slow down' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
+}
 
-app.use(limiter);
 app.use(cors());
 app.use(express.json());
 
@@ -65,16 +67,18 @@ app.get('/health', (req, res) => {
 
 app.use(errorHandler);
 
-// run cleanup every day at 2am
-cron.schedule('0 2 * * *', async () => {
-  console.log('Running scheduled cleanup...');
-  try {
-    const result = await cleanupExpiredSlots();
-    console.log('Cleanup result:', result);
-  } catch (err) {
-    console.error('Cleanup cron failed:', err.message);
-  }
-});
+// run cleanup every day at 2am (skip in test)
+if (process.env.NODE_ENV !== 'test') {
+  cron.schedule('0 2 * * *', async () => {
+    console.log('Running scheduled cleanup...');
+    try {
+      const result = await cleanupExpiredSlots();
+      console.log('Cleanup result:', result);
+    } catch (err) {
+      console.error('Cleanup cron failed:', err.message);
+    }
+  });
+}
 
 async function start() {
   try {
@@ -94,4 +98,9 @@ async function start() {
   }
 }
 
-start();
+// only start server if run directly (not imported by tests)
+if (require.main === module) {
+  start();
+}
+
+module.exports = { app, sequelize, start };

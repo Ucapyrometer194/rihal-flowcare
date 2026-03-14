@@ -27,6 +27,10 @@ const Customer = sequelize.define('Customer', {
     type: DataTypes.STRING, // file path to uploaded ID
     allowNull: false,
   },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'customers',
   timestamps: true,

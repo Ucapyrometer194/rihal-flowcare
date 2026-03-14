@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { authenticate } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { uploadAttachmentOptional } = require('../middleware/upload');
+const { bookingLimiter } = require('../middleware/rateLimiter');
 const appointmentService = require('../services/appointmentService');
 
 // all routes need auth
@@ -42,7 +43,7 @@ router.use(authenticate);
  *       400:
  *         description: Missing slotId or slot already booked
  */
-router.post('/', requireRole('customer'), uploadAttachmentOptional, async (req, res, next) => {
+router.post('/', requireRole('customer'), bookingLimiter, uploadAttachmentOptional, async (req, res, next) => {
   try {
     const { slotId, notes } = req.body;
     if (!slotId) {

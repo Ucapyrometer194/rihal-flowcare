@@ -8,7 +8,10 @@
     "seed": "node src/seed/seed.js",
     "dev": "node --watch src/app.js",
     "migrate": "node migrations/migrate.js",
-    "migrate:down": "node migrations/migrate.js down"
+    "migrate:down": "node migrations/migrate.js down",
+    "test": "NODE_ENV=test jest --runInBand --forceExit",
+    "test:unit": "NODE_ENV=test jest --runInBand --forceExit tests/unit",
+    "test:integration": "NODE_ENV=test jest --runInBand --forceExit tests/integration"
   },
   "keywords": [
     "flowcare",
@@ -30,5 +33,10 @@
     "sequelize": "^6.37.8",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "sqlite3": "^6.0.1",
+    "supertest": "^7.2.2"
   }
 }

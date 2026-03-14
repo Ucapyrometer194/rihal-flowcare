@@ -21,13 +21,17 @@ const Staff = sequelize.define('Staff', {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('admin', 'manager', 'staff'),
+    type: process.env.NODE_ENV === 'test' ? DataTypes.STRING : DataTypes.ENUM('admin', 'manager', 'staff'),
     allowNull: false,
     defaultValue: 'staff',
   },
   branchId: {
     type: DataTypes.UUID,
     allowNull: true, // admin doesn't belong to a specific branch
+  },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
   },
 }, {
   tableName: 'staff',

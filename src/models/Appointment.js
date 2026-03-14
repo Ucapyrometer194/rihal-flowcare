@@ -28,7 +28,7 @@ const Appointment = sequelize.define('Appointment', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('booked', 'checked-in', 'no-show', 'completed', 'cancelled'),
+    type: process.env.NODE_ENV === 'test' ? DataTypes.STRING : DataTypes.ENUM('booked', 'checked-in', 'no-show', 'completed', 'cancelled'),
     defaultValue: 'booked',
   },
   notes: {
@@ -37,7 +37,10 @@ const Appointment = sequelize.define('Appointment', {
   attachment: {
     type: DataTypes.STRING, // optional file upload
   },
-  // TODO: add email notifications later
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'appointments',
   timestamps: true,

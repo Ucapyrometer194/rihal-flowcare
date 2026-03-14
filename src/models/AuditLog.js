@@ -32,7 +32,7 @@ const AuditLog = sequelize.define('AuditLog', {
     allowNull: true, // for branch-scoped filtering
   },
   metadata: {
-    type: DataTypes.JSONB,
+    type: process.env.NODE_ENV === 'test' ? DataTypes.JSON : DataTypes.JSONB,
     defaultValue: {},
   },
 }, {

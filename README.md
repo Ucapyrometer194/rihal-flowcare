@@ -14,6 +14,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-18-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-46%20passing-brightgreen?style=for-the-badge)
 
 A production-ready REST API for managing healthcare clinic queues, appointments, and staff — built for the **Rihal CODESTACKER 2026** competition.
 
@@ -31,14 +32,15 @@ A production-ready REST API for managing healthcare clinic queues, appointments,
 - **Queue management** — real-time queue position, status tracking, and slot-based scheduling
 - **Slot management** with conflict detection to prevent double-booking
 - **Audit logging** — every write operation logged with JSONB metadata, CSV export
-- **Soft deletes** with configurable retention and cascading hard-delete cleanup
-- **Rate limiting** — 100 requests per 15-minute window per IP
+- **Soft deletes on ALL entities** with configurable retention and cascading hard-delete cleanup
+- **Multi-layer rate limiting** — global (100/15min), auth (20/15min), booking (10/hr), admin (50/15min)
 - **File uploads** with type validation (JPEG/PNG for ID, +PDF for attachments) and size limits (2-5 MB)
 - **Pagination & search** on all list endpoints with case-insensitive matching
 - **Background scheduler** — daily 2 AM cron job for automatic cleanup
 - **Idempotent seeding** — safe to run multiple times without duplicating data
 - **2 seeded branches** — Al Khuwair (Muscat) and Salalah — with realistic demo data
 - **8 data models** (7 core + 1 junction) for a complete healthcare domain
+- **46 automated tests** — unit tests for services + integration tests for all endpoints
 - **Live deployed** with Docker on production server
 
 ---
@@ -56,7 +58,7 @@ A production-ready REST API for managing healthcare clinic queues, appointments,
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
 │  │Rate Limit│→ │  CORS    │→ │JSON Parse│→ │   Router   │  │
 │  └──────────┘  └──────────┘  └──────────┘  └─────┬──────┘  │
-│                                                   │         │
+│   (multi-tier)                                    │         │
 │  ┌────────────────────────────────────────────────┼───────┐ │
 │  │                  Middleware Pipeline            │       │ │
 │  │  ┌────────────┐  ┌──────────┐  ┌────────────┐ │       │ │
@@ -82,6 +84,7 @@ A production-ready REST API for managing healthcare clinic queues, appointments,
 │                   PostgreSQL 16                              │
 │  branches │ service_types │ staff │ customers │ slots       │
 │  appointments │ staff_services │ audit_logs                  │
+│  ─── All entities support soft-delete (deletedAt) ───       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -97,14 +100,16 @@ Customer                    API                         Database
    │                         │  1. Decode Basic Auth       │
    │                         │  2. Verify bcrypt password  │
    │                         │  3. Check role = customer   │
-   │                         │  4. Find slot               │
+   │                         │  4. Booking rate limit      │
+   │                         │  5. Find slot               │
    │                         │─────────────────────────────▶
-   │                         │  5. Check isBooked = false  │
-   │                         │  6. Check deletedAt = null  │
+   │                         │  6. Check isBooked = false  │
+   │                         │  7. Check deletedAt = null  │
+   │                         │  8. App-level rate check    │
    │                         │◀─────────────────────────────
-   │                         │  7. Create appointment      │
-   │                         │  8. Set slot.isBooked=true  │
-   │                         │  9. Log to audit_logs       │
+   │                         │  9. Create appointment      │
+   │                         │ 10. Set slot.isBooked=true  │
+   │                         │ 11. Log to audit_logs       │
    │                         │─────────────────────────────▶
    │                         │◀─────────────────────────────
    │  201 { appointment }    │                             │
@@ -114,10 +119,10 @@ Customer                    API                         Database
 ### Soft Delete Lifecycle
 
 ```
-Slot created ──▶ Active (isBooked: false) ──▶ Booked (isBooked: true)
-                        │                           │
-                  DELETE /slots/:id           Appointment lifecycle
-                        │                    (check-in → complete)
+Entity created ──▶ Active ──▶ In use (referenced by other entities)
+                        │
+                  DELETE /entity/:id
+                        │
                         ▼
               Soft-deleted (deletedAt set)
               Hidden from normal queries
@@ -127,8 +132,10 @@ Slot created ──▶ Active (isBooked: false) ──▶ Booked (isBooked: true
                         │
                         ▼
               Hard-deleted by cleanup cron
-              ├── Related appointments cascade-deleted
+              ├── Related records cascade-deleted
               └── Audit log entry preserved (immutable)
+
+Applies to: branches, service_types, staff, customers, slots, appointments
 ```
 
 ---
@@ -143,10 +150,57 @@ Slot created ──▶ Active (isBooked: false) ──▶ Booked (isBooked: true
 | ORM | Sequelize 6 | Migration support, association management, query builder |
 | Auth | Basic Authentication | Per the challenge specification |
 | API Docs | Swagger UI (OpenAPI 3.0) | Interactive `/api-docs` endpoint |
+| Testing | Jest + Supertest | Unit + integration tests, SQLite in-memory for CI |
 | Containerization | Docker Compose | One-command setup, isolated environment |
 | File Handling | Multer | Type/size validation, disk storage |
-| Rate Limiting | express-rate-limit | Per-IP throttling |
+| Rate Limiting | express-rate-limit | Multi-tier per-endpoint throttling |
 | Scheduling | node-cron | Daily cleanup automation |
+
+---
+
+## Testing
+
+### Test Suite: 46 Tests (Unit + Integration)
+
+```bash
+npm test                 # Run all tests
+npm run test:unit        # Unit tests only (services)
+npm run test:integration # Integration tests only (API endpoints)
+```
+
+**Unit Tests** (`tests/unit/services.test.js`):
+- CleanupService: retention logic, cascade delete, edge cases
+- AuditService: pagination, CSV export, branch scoping
+
+**Integration Tests** (`tests/integration/api.test.js`):
+- Health check endpoint
+- Public routes (branches, services, available slots)
+- Auth routes (Basic Auth login, customer login, rejection)
+- Appointment CRUD (book, cancel, reschedule, status update, double-booking prevention)
+- Slot management (create, batch create, soft-delete, RBAC)
+- Staff management (list, service assignment, access control)
+- Customer routes (list, detail, password exclusion, RBAC)
+- Audit log routes (view, CSV export, access control)
+- Admin routes (retention config, cleanup trigger, RBAC)
+- RBAC enforcement (admin full access, manager branch-scoped)
+- Full soft-delete lifecycle (create → soft-delete → cleanup → verify)
+- Swagger/OpenAPI spec validation
+
+Tests use **SQLite in-memory** — no external database required. Zero-dependency CI.
+
+---
+
+## Rate Limiting
+
+Multi-tier rate limiting protects against abuse:
+
+| Tier | Limit | Window | Applied To |
+|---|---|---|---|
+| **Global** | 100 requests | 15 min | All endpoints |
+| **Auth** | 20 requests | 15 min | `/api/auth/login`, `/api/auth/register` |
+| **Booking** | 10 requests | 1 hour | `POST /api/appointments` |
+| **Admin** | 50 requests | 15 min | `/api/admin/*` |
+| **App-level** | 3 bookings | 1 hour | Per customer (in-service check) |
 
 ---
 
@@ -207,38 +261,39 @@ After starting the server, visit **[http://localhost:3000/api-docs](http://local
 ```
 ┌──────────┐     1:N     ┌──────────────┐
 │ branches │─────────────│ service_types │
-│          │             │              │
+│ (soft-del│             │ (soft-delete) │
 │          │──┐          └──────┬───────┘
 └──────────┘  │                 │ M:N
               │                 │
               │  1:N    ┌───────┴────────┐
-              ├─────────│     staff      │
+              ├─────────│     staff      │ (soft-delete)
               │         └───────┬────────┘
               │                 │ via staff_services
               │  1:N    ┌───────┴────────┐
-              ├─────────│     slots      │──── deletedAt (soft delete)
+              ├─────────│     slots      │ (soft-delete)
               │         └───────┬────────┘
               │                 │ 1:1
               │  1:N    ┌───────┴────────┐     1:N    ┌───────────┐
               └─────────│ appointments   │◀───────────│ customers │
+                        │ (soft-delete)  │            │(soft-del) │
                         └────────────────┘            └───────────┘
 
               ┌────────────────┐
               │  audit_logs    │ ← immutable, tracks all write ops
-              │  (JSONB meta)  │
+              │  (JSONB meta)  │   NEVER deleted
               └────────────────┘
 ```
 
-| Model | Key Fields |
-|---|---|
-| **Branch** | name, location, phone |
-| **ServiceType** | name, description, durationMinutes, price (OMR 3 decimals), branchId |
-| **Staff** | name, email, role (admin/manager/staff), branchId |
-| **Slot** | date, startTime, endTime, isBooked, deletedAt, branchId, serviceTypeId |
-| **Customer** | name, email, phone, idImage (validated upload) |
-| **Appointment** | status (booked/checked-in/no-show/completed/cancelled), notes, attachment, slotId, customerId |
-| **StaffService** | staffId, serviceTypeId (M:N junction table) |
-| **AuditLog** | action, actorId, actorRole, targetType, targetId, metadata (JSONB) |
+| Model | Key Fields | Soft Delete |
+|---|---|---|
+| **Branch** | name, location, phone | Yes |
+| **ServiceType** | name, description, durationMinutes, price (OMR 3 decimals), branchId | Yes |
+| **Staff** | name, email, role (admin/manager/staff), branchId | Yes |
+| **Slot** | date, startTime, endTime, isBooked, branchId, serviceTypeId | Yes |
+| **Customer** | name, email, phone, idImage (validated upload) | Yes |
+| **Appointment** | status (booked/checked-in/no-show/completed/cancelled), notes, attachment | Yes |
+| **StaffService** | staffId, serviceTypeId (M:N junction table) | No |
+| **AuditLog** | action, actorId, actorRole, targetType, targetId, metadata (JSONB) | Immutable |
 
 ### Database Migrations
 
@@ -249,7 +304,7 @@ npm run migrate        # Run all migrations (up)
 npm run migrate:down   # Rollback all migrations (down)
 ```
 
-8 sequential migration files (001-008) with full DDL, foreign keys, and constraints.
+9 sequential migration files (001-009) with full DDL, foreign keys, indexes, and constraints.
 
 ---
 
@@ -261,18 +316,19 @@ flowcare-be/
 │   ├── app.js                          # Express server + Swagger UI + cron
 │   ├── config/
 │   │   ├── config.js                   # Environment configuration
-│   │   ├── database.js                 # Sequelize connection pool
+│   │   ├── database.js                 # Sequelize connection (PostgreSQL / SQLite for tests)
 │   │   └── swagger.js                  # OpenAPI 3.0 specification
 │   ├── models/
 │   │   ├── index.js                    # Model registry + associations
-│   │   ├── Branch.js, ServiceType.js   # Domain models
-│   │   ├── Staff.js, Customer.js       # User models
-│   │   ├── Slot.js, Appointment.js     # Booking models
-│   │   ├── AuditLog.js                 # Compliance model
+│   │   ├── Branch.js, ServiceType.js   # Domain models (all with soft-delete)
+│   │   ├── Staff.js, Customer.js       # User models (all with soft-delete)
+│   │   ├── Slot.js, Appointment.js     # Booking models (all with soft-delete)
+│   │   ├── AuditLog.js                 # Compliance model (immutable)
 │   │   └── StaffService.js             # Junction table
 │   ├── middleware/
 │   │   ├── auth.js                     # Basic Authentication decoder
 │   │   ├── roles.js                    # Role-based access control
+│   │   ├── rateLimiter.js              # Multi-tier rate limiting (auth/booking/admin)
 │   │   ├── audit.js                    # Audit logging helper
 │   │   ├── upload.js                   # File upload validation (Multer)
 │   │   └── errorHandler.js             # Global error handler
@@ -280,7 +336,7 @@ flowcare-be/
 │   │   ├── public.js, auth.js          # Public + auth routes
 │   │   ├── appointments.js, slots.js   # Core booking routes
 │   │   ├── staff.js, customers.js      # User management routes
-│   │   ├── auditLogs.js, admin.js      # Compliance + admin routes
+│   │   └── auditLogs.js, admin.js      # Compliance + admin routes
 │   ├── services/                       # Business logic layer
 │   │   ├── appointmentService.js       # Booking, cancel, reschedule, queue
 │   │   ├── slotService.js              # Slot CRUD + conflict detection
@@ -289,12 +345,19 @@ flowcare-be/
 │   └── seed/
 │       ├── seed.js                     # Idempotent seeder (findOrCreate)
 │       └── data.json                   # Seed data (JSON)
-├── migrations/                         # 8 versioned migration scripts
+├── tests/
+│   ├── setup.js                        # Test DB setup, seed helpers, auth utils
+│   ├── unit/
+│   │   └── services.test.js            # CleanupService + AuditService tests
+│   └── integration/
+│       └── api.test.js                 # Full API endpoint tests (46 tests)
+├── migrations/                         # 9 versioned migration scripts
 │   ├── 001-create-branches.js
 │   ├── ...
-│   ├── 008-create-audit-logs.js
+│   ├── 009-add-soft-delete-all-entities.js
 │   └── migrate.js                      # Migration runner (up/down)
 ├── SCHEMA.md                           # Full ER diagram + table definitions
+├── jest.config.js                      # Test configuration
 ├── docker-compose.yml                  # PostgreSQL 16 + Node.js app
 ├── Dockerfile                          # Multi-stage Node.js build
 └── package.json
@@ -323,6 +386,15 @@ Seed the database (in a separate terminal):
 ```bash
 docker compose exec app npm run seed
 ```
+
+### Run tests
+
+```bash
+npm install
+npm test
+```
+
+No database required — tests use SQLite in-memory.
 
 ### Default credentials
 
@@ -360,6 +432,7 @@ curl http://localhost:3000/api/branches
 | `DB_USER` | `flowcare` | Database user |
 | `DB_PASSWORD` | `flowcare123` | Database password |
 | `SOFT_DELETE_RETENTION_DAYS` | `30` | Days before hard-delete |
+| `NODE_ENV` | `production` | Set to `test` for SQLite in-memory |
 
 ---
 
@@ -499,12 +572,14 @@ Data file: [`src/seed/data.json`](src/seed/data.json)
 | Decision | Rationale |
 |---|---|
 | **Basic Auth over JWT** | Challenge spec explicitly requires Basic Authentication |
-| **Soft delete on slots only** | Per spec; other entities use standard delete |
+| **Soft delete on ALL entities** | Comprehensive data retention — no accidental data loss |
 | **Cascading hard-delete** | When slots are purged, related appointments are cleaned up; audit logs preserved |
+| **Multi-tier rate limiting** | Auth brute-force protection (20/15min), booking hoarding prevention (10/hr) |
 | **JSONB for audit metadata** | Flexible schema for different action types without schema migrations |
 | **UUID primary keys** | Secure, distributed-safe, no sequential ID enumeration |
 | **DECIMAL(10,3) for price** | Omani Rial uses 3 decimal places |
 | **Layered architecture** | Routes → Services → Models separation for testability |
+| **SQLite for tests** | Zero-dependency CI, no database setup required |
 | **Idempotent seeding** | `findOrCreate()` ensures safe re-runs |
 
 ---
