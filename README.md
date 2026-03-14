@@ -1,5 +1,13 @@
 # FlowCare API — Smart Healthcare Queue Management
 
+> **[View All Submissions — alizaabi.om/rihal-codestack](https://alizaabi.om/rihal-codestack/)**
+
+![Showcase](screenshots/showcase-main.png)
+
+**Live API:** [alizaabi.om/rihal-codestack/flowcare-api/health](https://alizaabi.om/rihal-codestack/flowcare-api/health) | **API Explorer:** [alizaabi.om/rihal-codestack/flowcare.html](https://alizaabi.om/rihal-codestack/flowcare.html)
+
+---
+
 ![Rihal CODESTACKER 2026](https://img.shields.io/badge/Rihal-CODESTACKER%202026-blue?style=for-the-badge)
 ![Challenge](https://img.shields.io/badge/Challenge-%232%20Backend%20%2F%20Software%20Engineering-green?style=for-the-badge)
 ![Node.js](https://img.shields.io/badge/Node.js-18-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -7,9 +15,6 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 A production-ready REST API for managing healthcare clinic queues, appointments, and staff — built for the **Rihal CODESTACKER 2026** competition.
-
-- **Live API:** https://alizaabi.om/rihal-codestack/flowcare-api/health
-- **Showcase Page:** https://alizaabi.om/rihal-codestack/flowcare.html
 
 ---
 
@@ -185,3 +190,10 @@ The seed script creates:
 
 **Ali Al Zaabi**
 Built for Rihal CODESTACKER 2026 — Challenge #2: Backend / Software Engineering
+
+---
+
+## Other Challenges
+- [Visit Oman](https://github.com/zaabi1995/rihal-visit-oman) — Challenge #1: Frontend Development
+- [DE Pipeline](https://github.com/zaabi1995/rihal-de-pipeline) — Challenge #4: Data Engineering
+- [Muscat 2040](https://github.com/zaabi1995/rihal-muscat-2040) — Challenge #6: Data Analytics
